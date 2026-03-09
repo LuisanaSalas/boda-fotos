@@ -1,12 +1,20 @@
 from django.contrib import admin
+from django.urls import reverse
 from django.utils.html import format_html
+
 from .models import Event, Table, Media
 
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "is_active", "created_at")
+    list_display = ("name", "slug", "is_active", "pdf_qr_link", "created_at")
     prepopulated_fields = {"slug": ("name",)}
+
+    def pdf_qr_link(self, obj):
+        url = reverse("event_qr_pdf", kwargs={"event_slug": obj.slug})
+        return format_html('<a href="{}" target="_blank">Descargar PDF QR</a>', url)
+
+    pdf_qr_link.short_description = "PDF de QR"
 
 
 @admin.register(Table)
