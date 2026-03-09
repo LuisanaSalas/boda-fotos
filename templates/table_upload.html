@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event.name }} - Mesa {{ table.number }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-4 text-center">
+                        <h1 class="mb-3">{{ event.name }}</h1>
+                        <h3 class="mb-3">Mesa {{ table.number }}</h3>
+                        <p class="text-muted mb-4">
+                            Bienvenidos. Desde aquí podrán subir sus fotos de la boda.
+                        </p>
+
+                        <div class="alert alert-info rounded-3">
+                            En el siguiente paso vamos a poner aquí el formulario para subir imágenes.
+                        </div>
+
+                        <a href="/" class="btn btn-outline-secondary rounded-pill px-4">
+                            Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

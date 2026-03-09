@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Event, Table, Media
 
 
@@ -10,9 +11,17 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
-    list_display = ("event", "number", "token", "created_at")
+    list_display = ("event", "number", "token", "upload_link", "created_at")
     list_filter = ("event",)
     search_fields = ("event__name", "number", "token")
+
+    def upload_link(self, obj):
+        return format_html(
+            '<a href="{}" target="_blank">Abrir enlace</a>',
+            obj.get_upload_url()
+        )
+
+    upload_link.short_description = "Link de subida"
 
 
 @admin.register(Media)

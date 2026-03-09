@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.urls import reverse
 
 
 def generate_token():
@@ -36,6 +37,16 @@ class Table(models.Model):
 
     def __str__(self):
         return f"{self.event.name} - Mesa {self.number}"
+
+    def get_upload_url(self):
+        return reverse(
+            "table_upload",
+            kwargs={
+                "event_slug": self.event.slug,
+                "table_number": self.number,
+                "token": self.token,
+            }
+        )
 
 
 class Media(models.Model):
