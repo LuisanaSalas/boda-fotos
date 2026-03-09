@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>{{ event.name }} - Galería</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+.photo-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+gap:15px;
+}
+
+.photo-grid img{
+width:100%;
+height:200px;
+object-fit:cover;
+border-radius:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container py-5">
+
+<div class="text-center mb-5">
+
+<h1>{{ event.name }}</h1>
+<p class="text-muted">Galería de fotos de la boda</p>
+
+</div>
+
+<div class="photo-grid">
+
+{% for media in media_items %}
+
+<div>
+<img src="{{ media.image.url }}">
+</div>
+
+{% empty %}
+
+<p>No hay fotos todavía.</p>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+</body>
+</html>

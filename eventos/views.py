@@ -7,7 +7,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
-from .models import Table, Event
+from .models import Table, Event, Media
 from .forms import MediaUploadForm
 
 
@@ -16,6 +16,7 @@ def home(request):
 
 
 def table_upload(request, event_slug, table_number, token):
+
     table = get_object_or_404(
         Table,
         event__slug=event_slug,
@@ -25,21 +26,33 @@ def table_upload(request, event_slug, table_number, token):
     )
 
     if request.method == "POST":
+
         form = MediaUploadForm(request.POST, request.FILES)
+
         if form.is_valid():
-            media = form.save(commit=False)
-            media.event = table.event
-            media.table = table
-            media.save()
+
+            guest_name = form.cleaned_data.get("guest_name")
+            images = request.FILES.getlist("images")
+
+            for image in images:
+                Media.objects.create(
+                    event=table.event,
+                    table=table,
+                    guest_name=guest_name,
+                    image=image
+                )
+
             return redirect(request.path)
+
     else:
         form = MediaUploadForm()
 
     context = {
         "table": table,
         "event": table.event,
-        "form": form,
+        "form": form
     }
+
     return render(request, "table_upload.html", context)
 
 
@@ -106,3 +119,18 @@ def event_qr_pdf(request, event_slug):
     return HttpResponse(buffer, content_type="application/pdf", headers={
         "Content-Disposition": f'inline; filename="{filename}"'
     })
+
+def event_gallery(request, event_slug):
+
+    event = get_object_or_404(Event, slug=event_slug)
+
+    media_items = Media.objects.filter(
+        event=event
+    ).order_by("-uploaded_at")
+
+    context = {
+        "event": event,
+        "media_items": media_items
+    }
+
+    return render(request, "event_gallery.html", context)

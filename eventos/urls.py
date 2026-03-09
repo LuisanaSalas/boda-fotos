@@ -13,4 +13,9 @@ urlpatterns = [
         views.event_qr_pdf,
         name='event_qr_pdf'
     ),
+    path(
+        'evento/<slug:event_slug>/galeria/',
+        views.event_gallery,
+        name='event_gallery'
+    ),
 ]
