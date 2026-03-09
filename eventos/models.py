@@ -1,4 +1,7 @@
 import uuid
+import qrcode
+from io import BytesIO
+from django.core.files import File
 from django.db import models
 from django.urls import reverse
 
@@ -29,6 +32,11 @@ class Table(models.Model):
         default=generate_token,
         unique=True
     )
+    qr_image = models.ImageField(
+        upload_to="qrs/",
+        blank=True,
+        null=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -47,6 +55,24 @@ class Table(models.Model):
                 "token": self.token,
             }
         )
+
+    def get_full_upload_url(self):
+        return f"http://127.0.0.1:8000{self.get_upload_url()}"
+
+    def generate_qr(self):
+        qr = qrcode.make(self.get_full_upload_url())
+        buffer = BytesIO()
+        qr.save(buffer, format="PNG")
+        filename = f"evento_{self.event.slug}_mesa_{self.number}.png"
+        self.qr_image.save(filename, File(buffer), save=False)
+
+    def save(self, *args, **kwargs):
+        creating = self.pk is None
+        super().save(*args, **kwargs)
+
+        if creating and not self.qr_image:
+            self.generate_qr()
+            super().save(update_fields=["qr_image"])
 
 
 class Media(models.Model):
