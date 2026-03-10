@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-
+from .google_drive import upload_file_to_drive
 from .models import Table, Event, Media
 from .forms import MediaUploadForm
 
@@ -42,6 +42,14 @@ def table_upload(request, event_slug, table_number, token):
                     image=image
                 )
 
+                image.seek(0)
+
+                upload_file_to_drive(
+                    image,
+                    image.name,
+                    table.number,
+                    guest_name
+                )
             return redirect(request.path)
 
     else:
