@@ -1,6 +1,11 @@
+import os
+import re
 import uuid
 import qrcode
+
 from io import BytesIO
+from datetime import datetime
+
 from django.core.files import File
 from django.db import models
 from django.urls import reverse
@@ -8,6 +13,31 @@ from django.urls import reverse
 
 def generate_token():
     return uuid.uuid4().hex
+
+
+def sanitize_filename_part(value):
+    if not value:
+        return "Invitado"
+
+    value = value.strip()
+    value = re.sub(r"\s+", "_", value)
+    value = re.sub(r"[^A-Za-z0-9_áéíóúÁÉÍÓÚñÑ-]", "", value)
+
+    return value or "Invitado"
+
+
+def media_upload_path(instance, filename):
+    extension = os.path.splitext(filename)[1].lower() or ".jpg"
+
+    guest = sanitize_filename_part(instance.guest_name)
+    timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+    new_filename = f"{guest}_{timestamp}{extension}"
+
+    event_slug = instance.event.slug
+    table_number = instance.table.number
+
+    return f"{event_slug}/mesa_{table_number}/{new_filename}"
 
 
 class Event(models.Model):
@@ -97,7 +127,7 @@ class Media(models.Model):
         related_name="media_items"
     )
     guest_name = models.CharField(max_length=150, blank=True, null=True)
-    image = models.ImageField(upload_to="uploads/")
+    image = models.ImageField(upload_to=media_upload_path)
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,

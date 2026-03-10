@@ -1,22 +1,51 @@
 from io import BytesIO
+import os
 
+from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
+
 from .google_drive import upload_file_to_drive
 from .models import Table, Event, Media
 from .forms import MediaUploadForm
+
+
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+MAX_FILE_SIZE_MB = 10
 
 
 def home(request):
     return render(request, "home.html")
 
 
-def table_upload(request, event_slug, table_number, token):
+def validate_uploaded_image(image):
+    extension = os.path.splitext(image.name)[1].lower()
 
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+        return False, (
+            f"El archivo '{image.name}' no tiene un formato permitido. "
+            "Solo se aceptan JPG, JPEG, PNG, WEBP y HEIC."
+        )
+
+    max_size_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
+    if image.size > max_size_bytes:
+        return False, (
+            f"El archivo '{image.name}' excede el tamaño máximo permitido "
+            f"de {MAX_FILE_SIZE_MB} MB."
+        )
+
+    content_type = getattr(image, "content_type", "")
+    if not content_type.startswith("image/"):
+        return False, f"El archivo '{image.name}' no es una imagen válida."
+
+    return True, None
+
+
+def table_upload(request, event_slug, table_number, token):
     table = get_object_or_404(
         Table,
         event__slug=event_slug,
@@ -26,31 +55,76 @@ def table_upload(request, event_slug, table_number, token):
     )
 
     if request.method == "POST":
-
         form = MediaUploadForm(request.POST, request.FILES)
 
         if form.is_valid():
-
             guest_name = form.cleaned_data.get("guest_name")
             images = request.FILES.getlist("images")
 
+            if not images:
+                messages.error(request, "Debes seleccionar al menos una imagen.")
+                return redirect(request.path)
+
+            uploaded_count = 0
+            drive_error_count = 0
+            validation_errors = []
+
             for image in images:
-                Media.objects.create(
+                is_valid, error_message = validate_uploaded_image(image)
+
+                if not is_valid:
+                    validation_errors.append(error_message)
+                    continue
+
+                media_item = Media.objects.create(
                     event=table.event,
                     table=table,
                     guest_name=guest_name,
                     image=image
                 )
 
-                image.seek(0)
+                uploaded_count += 1
 
-                upload_file_to_drive(
-                    image,
-                    image.name,
-                    table.number,
-                    guest_name
+                try:
+                    image.seek(0)
+                    upload_file_to_drive(
+                        image,
+                        os.path.basename(media_item.image.name),
+                        table.number,
+                        guest_name
+                    )
+                except Exception:
+                    drive_error_count += 1
+
+            for error in validation_errors:
+                messages.error(request, error)
+
+            if uploaded_count > 0 and drive_error_count == 0:
+                messages.success(
+                    request,
+                    f"Se subieron correctamente {uploaded_count} foto(s)."
                 )
+            elif uploaded_count > 0 and drive_error_count > 0:
+                messages.warning(
+                    request,
+                    f"Se guardaron {uploaded_count} foto(s), "
+                    f"pero {drive_error_count} no se pudieron sincronizar con Google Drive."
+                )
+            elif uploaded_count == 0 and validation_errors:
+                messages.error(
+                    request,
+                    "No se pudo subir ninguna foto. Revisa los archivos seleccionados."
+                )
+            else:
+                messages.error(
+                    request,
+                    "Ocurrió un problema al procesar las imágenes."
+                )
+
             return redirect(request.path)
+
+        messages.error(request, "No se pudo procesar el formulario.")
+        return redirect(request.path)
 
     else:
         form = MediaUploadForm()
@@ -128,8 +202,8 @@ def event_qr_pdf(request, event_slug):
         "Content-Disposition": f'inline; filename="{filename}"'
     })
 
-def event_gallery(request, event_slug):
 
+def event_gallery(request, event_slug):
     event = get_object_or_404(Event, slug=event_slug)
 
     media_items = Media.objects.filter(

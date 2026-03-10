@@ -6,13 +6,11 @@ class MultipleFileInput(forms.ClearableFileInput):
 
 
 class MultipleFileField(forms.FileField):
-
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("widget", MultipleFileInput())
         super().__init__(*args, **kwargs)
 
     def clean(self, data, initial=None):
-
         single_file_clean = super().clean
 
         if isinstance(data, (list, tuple)):
@@ -24,7 +22,6 @@ class MultipleFileField(forms.FileField):
 
 
 class MediaUploadForm(forms.Form):
-
     guest_name = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={
