@@ -8,7 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-
+from django.http import JsonResponse
 from .google_drive import upload_file_to_drive
 from .models import Table, Event, Media
 from .forms import MediaUploadForm
@@ -19,8 +19,13 @@ MAX_FILE_SIZE_MB = 10
 
 
 def home(request):
-    return render(request, "home.html")
+    event = Event.objects.filter(is_active=True).order_by("-created_at").first()
 
+    context = {
+        "event": event,
+    }
+
+    return render(request, "home.html", context)
 
 def validate_uploaded_image(image):
     extension = os.path.splitext(image.name)[1].lower()
@@ -207,12 +212,36 @@ def event_gallery(request, event_slug):
     event = get_object_or_404(Event, slug=event_slug)
 
     media_items = Media.objects.filter(
-        event=event
+        event=event,
+        status=Media.STATUS_APPROVED
     ).order_by("-uploaded_at")
+
+    slideshow = request.GET.get("slideshow") == "1"
 
     context = {
         "event": event,
-        "media_items": media_items
+        "media_items": media_items,
+        "slideshow": slideshow,
     }
 
     return render(request, "event_gallery.html", context)
+
+def event_gallery_api(request, event_slug):
+    event = get_object_or_404(Event, slug=event_slug)
+
+    media_items = Media.objects.filter(
+        event=event,
+        status=Media.STATUS_APPROVED
+    ).order_by("-uploaded_at")[:100]
+
+    data = []
+
+    for m in media_items:
+        data.append({
+            "image": m.image.url,
+            "guest_name": m.guest_name or "Invitado",
+            "table_number": m.table.number,
+            "uploaded_at": m.uploaded_at.strftime("%d/%m/%Y %H:%M"),
+        })
+
+    return JsonResponse({"items": data})

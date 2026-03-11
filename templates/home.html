@@ -1,17 +1,178 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galería Boda</title>
+    <title>{% if event %}{{ event.name }}{% else %}Nuestra boda{% endif %}</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'assets/css/static.css' %}">
 </head>
-<body>
-    <div class="container py-5">
-        <div class="text-center">
-            <h1>Galería de la boda</h1>
-            <p>Muy pronto podrás subir tus fotos escaneando el QR de tu mesa.</p>
+<body class="site-body">
+
+<header class="site-header">
+    <div class="container">
+        <nav class="navbar navbar-expand-lg py-3">
+            <a class="navbar-brand brand-mark" href="/">Y & E</a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse justify-content-end" id="mainNav">
+                <ul class="navbar-nav align-items-lg-center gap-lg-3">
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="/">Inicio</a>
+                    </li>
+                    {% if event %}
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="{% url 'event_gallery' event.slug %}">Galería</a>
+                    </li>
+                    {% endif %}
+                    {% if event and event.tables.first %}
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="{{ event.tables.first.get_upload_url }}">Compartir fotos</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<section class="landing-hero">
+    <div class="container">
+        <div class="row align-items-center g-5 min-vh-100 py-5">
+            <div class="col-lg-6">
+                <span class="eyebrow">Nuestra boda</span>
+                <h1 class="hero-name">
+                    {% if event %}{{ event.name }}{% else %}Yesenia & Edwin{% endif %}
+                </h1>
+                <p class="hero-copy">
+                    Bienvenidos a este espacio creado para compartir nuestra historia,
+                    revivir cada recuerdo y guardar todos los momentos especiales de este día.
+                </p>
+
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    {% if event %}
+                    <a href="{% url 'event_gallery' event.slug %}" class="btn btn-brand-primary">
+                        Ver galería
+                    </a>
+                    {% endif %}
+                    <a href="#nuestra-historia" class="btn btn-brand-outline">
+                        Nuestra historia
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="hero-collage">
+                    <div class="hero-frame hero-frame-lg">
+                        <img src="{% static 'assets/img/novios/cover-1.jpg' %}" alt="Foto de los novios">
+                    </div>
+                    <div class="hero-frame hero-frame-sm">
+                        <img src="{% static 'assets/img/novios/cover-2.jpg' %}" alt="Foto de los novios">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</section>
+
+<section class="section-block" id="nuestra-historia">
+    <div class="container">
+        <div class="section-head text-center">
+            <span class="eyebrow">Capítulo 1</span>
+            <h2 class="section-title-dark">Nuestra historia</h2>
+            <p class="section-copy-dark">
+                Aquí pueden contar cómo se conocieron, cómo fue creciendo su amor
+                y qué significa para ustedes celebrar este día rodeados de las personas que más aman.
+            </p>
+        </div>
+
+        <div class="row g-4 align-items-center mt-3">
+            <div class="col-lg-6">
+                <div class="photo-panel">
+                    <img src="{% static 'assets/img/novios/story-1.jpg' %}" alt="Historia de los novios">
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="story-card">
+                    <h3>Un amor que floreció con el tiempo</h3>
+                    <p>
+                        Este espacio puede hablar de su primer encuentro, de los pequeños detalles
+                        que los unieron y de cómo cada etapa fue construyendo la historia que hoy celebran.
+                    </p>
+                    <p>
+                        También pueden compartir un mensaje para sus invitados, agradecer su presencia
+                        y explicar por qué este día es tan especial para ustedes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-block soft-gold-section">
+    <div class="container">
+        <div class="section-head text-center">
+            <span class="eyebrow">Capítulo 2</span>
+            <h2 class="section-title-dark">Momentos que nos trajeron hasta aquí</h2>
+        </div>
+
+        <div class="row g-4 mt-2">
+            <div class="col-md-4">
+                <div class="moment-card h-100">
+                    <div class="moment-number">01</div>
+                    <h4>El primer encuentro</h4>
+                    <p>Un espacio para contar cómo se conocieron y qué hizo especial ese primer momento.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="moment-card h-100">
+                    <div class="moment-number">02</div>
+                    <h4>La promesa</h4>
+                    <p>Aquí pueden hablar de la propuesta, del compromiso o del momento en que decidieron casarse.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="moment-card h-100">
+                    <div class="moment-number">03</div>
+                    <h4>El gran día</h4>
+                    <p>Un mensaje de agradecimiento a todos los invitados por ser parte de este capítulo tan importante.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-block">
+    <div class="container">
+        <div class="cta-panel text-center">
+            <span class="eyebrow">Comparte con nosotros</span>
+            <h2 class="section-title-dark">Revive cada instante</h2>
+            <p class="section-copy-dark">
+                Explora los recuerdos compartidos durante la boda y ayúdanos a guardar
+                cada sonrisa, abrazo y momento inolvidable.
+            </p>
+
+            <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+                {% if event %}
+                <a href="{% url 'event_gallery' event.slug %}" class="btn btn-brand-primary">
+                    Ir a la galería
+                </a>
+                {% endif %}
+                {% if event and event.tables.first %}
+                <a href="{{ event.tables.first.get_upload_url }}" class="btn btn-brand-outline-dark">
+                    Compartir fotos
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

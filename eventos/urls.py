@@ -18,4 +18,9 @@ urlpatterns = [
         views.event_gallery,
         name='event_gallery'
     ),
+    path(
+        "evento/<slug:event_slug>/galeria/api/",
+        views.event_gallery_api,
+        name="event_gallery_api"
+    ),
 ]

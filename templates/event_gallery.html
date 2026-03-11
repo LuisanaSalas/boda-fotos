@@ -1,62 +1,251 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ event.name }} - Galería</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>{{ event.name }} - Galería</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-
-.photo-grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-gap:15px;
-}
-
-.photo-grid img{
-width:100%;
-height:200px;
-object-fit:cover;
-border-radius:10px;
-}
-
-</style>
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'assets/css/static.css' %}">
 </head>
+<body class="site-body">
+<div id="galleryApp" v-cloak>
 
-<body>
+    <header class="site-header site-header-light">
+        <div class="container">
+            <nav class="navbar navbar-expand-lg py-3">
+                <a class="navbar-brand brand-mark" href="/">Y & E</a>
+                <div class="ms-auto d-flex gap-2 flex-wrap">
+                    <a href="/" class="btn btn-sm btn-brand-outline-dark">Inicio</a>
+                    {% if event.tables.first %}
+                    <a href="{{ event.tables.first.get_upload_url }}" class="btn btn-sm btn-brand-primary">Compartir fotos</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
 
-<div class="container py-5">
+    {% if slideshow %}
+        <div class="slideshow-shell">
+            {% if media_items %}
+                <div class="slideshow-inner">
+                    <div class="slideshow-image-panel">
+                        <img :src="currentSlide.image" class="slideshow-image" alt="Foto de la boda">
+                    </div>
 
-<div class="text-center mb-5">
+                    <div class="slideshow-content">
+                        <span class="eyebrow text-white-50">Galería en vivo</span>
+                        <h1 class="slideshow-event-title">{{ event.name }}</h1>
+                        <h3 class="slideshow-meta">Mesa [[ currentSlide.table_number ]]</h3>
+                        <p class="slideshow-guest">[[ currentSlide.guest_name || 'Invitado' ]]</p>
 
-<h1>{{ event.name }}</h1>
-<p class="text-muted">Galería de fotos de la boda</p>
+                        <div class="top-actions top-actions-spaced mt-4">
+                            <a href="{% url 'event_gallery' event.slug %}" class="btn btn-light">Ver galería</a>
+                            <button class="btn btn-outline-light" @click="toggleFullscreen">Pantalla completa</button>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="slideshow-empty text-center">
+                    <h1>{{ event.name }}</h1>
+                    <p class="mb-4">No hay fotos aprobadas todavía.</p>
+                    <a href="{% url 'event_gallery' event.slug %}" class="btn btn-light">Volver a galería</a>
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <section class="gallery-hero">
+            <div class="container py-5">
+                <div class="text-center">
+                    <span class="eyebrow">Recuerdos del gran día</span>
+                    <h1 class="section-title-dark">{{ event.name }}</h1>
+                    <p class="gallery-lead">
+                        Un álbum vivo con los momentos que compartimos juntos.
+                    </p>
 
+                    <div class="top-actions mt-4">
+                        <a href="{% url 'event_gallery' event.slug %}?slideshow=1" class="btn btn-brand-primary">
+                            Abrir modo pantalla
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="gallery-album-section pb-5">
+            <div class="container">
+                <div class="album-grid">
+                    {% for media in media_items %}
+                        <div class="album-card">
+                            <div class="album-frame">
+                                <img
+                                    src="{{ media.image.url }}"
+                                    alt="Foto de la boda"
+                                    @click="openPhoto(
+                                        '{{ media.image.url|escapejs }}',
+                                        `{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}`,
+                                        '{{ media.table.number }}',
+                                        '{{ media.uploaded_at|date:"d/m/Y H:i" }}'
+                                    )"
+                                >
+                            </div>
+                            <div class="album-caption">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge table-badge-custom">Mesa {{ media.table.number }}</span>
+                                    <small class="text-muted">{{ media.uploaded_at|date:"d/m/Y H:i" }}</small>
+                                </div>
+                                <div class="photo-guest-name">
+                                    {% if media.guest_name %}
+                                        <strong>{{ media.guest_name }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">Invitado</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="empty-state-card text-center">
+                            <h4 class="mb-2">No hay fotos todavía</h4>
+                            <p class="text-muted mb-0">Las fotos aprobadas aparecerán aquí.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content border-0 shadow-lg wedding-modal-content">
+                    <div class="modal-header border-0">
+                        <div>
+                            <h5 class="modal-title mb-0">[[ modalPhoto.guest_name || 'Invitado' ]]</h5>
+                            <small class="text-muted">Mesa [[ modalPhoto.table_number ]] • [[ modalPhoto.uploaded_at ]]</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+
+                    <div class="modal-body text-center pt-0">
+                        <img :src="modalPhoto.image" class="img-fluid rounded modal-image" alt="Foto ampliada">
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
 
-<div class="photo-grid">
+<script src="{% static 'assets/js/css_js/vue.3.2.36.global.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const slideshowItems = [
+        {% for media in media_items %}
+        {
+            image: "{{ media.image.url|escapejs }}",
+            guest_name: "{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}",
+            table_number: "{{ media.table.number }}",
+            uploaded_at: "{{ media.uploaded_at|date:'d/m/Y H:i' }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
 
-{% for media in media_items %}
+    const { createApp } = Vue;
 
-<div>
-<img src="{{ media.image.url }}">
-</div>
+    createApp({
+        delimiters: ['[[', ']]'],
+        data() {
+            return {
+                slideshowItems: slideshowItems,
+                currentIndex: 0,
+                currentSlide: slideshowItems.length ? slideshowItems[0] : {
+                    image: "",
+                    guest_name: "Invitado",
+                    table_number: "",
+                    uploaded_at: ""
+                },
+                modalPhoto: {
+                    image: "",
+                    guest_name: "",
+                    table_number: "",
+                    uploaded_at: ""
+                },
+                modalInstance: null,
+                slideInterval: null,
+                refreshInterval: null,
+            };
+        },
+        mounted() {
+            const modalElement = document.getElementById("photoModal");
+            if (modalElement) {
+                this.modalInstance = new bootstrap.Modal(modalElement);
+            }
 
-{% empty %}
+            this.fetchPhotos();
 
-<p>No hay fotos todavía.</p>
+            {% if slideshow %}
+            if (this.slideshowItems.length > 1) {
+                this.slideInterval = setInterval(() => {
+                    this.nextSlide();
+                }, 5000);
+            }
+            {% endif %}
 
-{% endfor %}
-
-</div>
-
-</div>
-
+            this.refreshInterval = setInterval(() => {
+                this.fetchPhotos();
+            }, 10000);
+        },
+        beforeUnmount() {
+            if (this.slideInterval) clearInterval(this.slideInterval);
+            if (this.refreshInterval) clearInterval(this.refreshInterval);
+        },
+        methods: {
+            openPhoto(image, guestName, tableNumber, uploadedAt) {
+                this.modalPhoto = {
+                    image: image,
+                    guest_name: guestName || "Invitado",
+                    table_number: tableNumber,
+                    uploaded_at: uploadedAt
+                };
+                if (this.modalInstance) this.modalInstance.show();
+            },
+            nextSlide() {
+                if (!this.slideshowItems.length) return;
+                this.currentIndex = (this.currentIndex + 1) % this.slideshowItems.length;
+                this.currentSlide = this.slideshowItems[this.currentIndex];
+            },
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            },
+            fetchPhotos() {
+                fetch("/evento/{{ event.slug }}/galeria/api/")
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.items) {
+                            this.slideshowItems = data.items;
+                            if (this.currentIndex >= this.slideshowItems.length) {
+                                this.currentIndex = 0;
+                            }
+                            if (this.slideshowItems.length > 0) {
+                                this.currentSlide = this.slideshowItems[this.currentIndex];
+                            } else {
+                                this.currentSlide = {
+                                    image: "",
+                                    guest_name: "Invitado",
+                                    table_number: "",
+                                    uploaded_at: ""
+                                };
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error al cargar fotos:", error);
+                    });
+            }
+        }
+    }).mount("#galleryApp");
+</script>
 </body>
 </html>
