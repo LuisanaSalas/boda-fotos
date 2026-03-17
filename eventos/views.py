@@ -12,6 +12,8 @@ from django.http import JsonResponse
 from .google_drive import upload_file_to_drive
 from .models import Table, Event, Media
 from .forms import MediaUploadForm
+import zipfile
+from django.utils.text import slugify
 
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
@@ -238,6 +240,7 @@ def event_gallery_api(request, event_slug):
 
     for m in media_items:
         data.append({
+            "id": m.id,
             "image": m.image.url,
             "guest_name": m.guest_name or "Invitado",
             "table_number": m.table.number,
@@ -245,3 +248,88 @@ def event_gallery_api(request, event_slug):
         })
 
     return JsonResponse({"items": data})
+
+def download_all_photos(request, event_slug):
+    event = get_object_or_404(Event, slug=event_slug)
+
+    media_items = Media.objects.filter(
+        event=event,
+        status=Media.STATUS_APPROVED
+    ).order_by("-uploaded_at")
+
+    buffer = BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for media in media_items:
+            if not media.image:
+                continue
+
+            file_path = media.image.path
+            extension = os.path.splitext(file_path)[1].lower()
+
+            guest_name = media.guest_name or "invitado"
+            guest_slug = slugify(guest_name) or "invitado"
+
+            filename = (
+                f"mesa_{media.table.number}/"
+                f"{guest_slug}_{media.uploaded_at.strftime('%Y%m%d_%H%M%S')}{extension}"
+            )
+
+            if os.path.exists(file_path):
+                zip_file.write(file_path, arcname=filename)
+
+    buffer.seek(0)
+
+    zip_filename = f"{event.slug}_galeria_completa.zip"
+
+    return HttpResponse(
+        buffer.getvalue(),
+        content_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'}
+    )
+
+
+def download_selected_photos(request, event_slug):
+    event = get_object_or_404(Event, slug=event_slug)
+
+    selected_ids = request.GET.getlist("ids")
+
+    media_items = Media.objects.filter(
+        event=event,
+        status=Media.STATUS_APPROVED,
+        id__in=selected_ids
+    ).order_by("-uploaded_at")
+
+    if not media_items.exists():
+        return HttpResponse("No se seleccionaron fotos válidas.", status=400)
+
+    buffer = BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for media in media_items:
+            if not media.image:
+                continue
+
+            file_path = media.image.path
+            extension = os.path.splitext(file_path)[1].lower()
+
+            guest_name = media.guest_name or "invitado"
+            guest_slug = slugify(guest_name) or "invitado"
+
+            filename = (
+                f"mesa_{media.table.number}/"
+                f"{guest_slug}_{media.uploaded_at.strftime('%Y%m%d_%H%M%S')}{extension}"
+            )
+
+            if os.path.exists(file_path):
+                zip_file.write(file_path, arcname=filename)
+
+    buffer.seek(0)
+
+    zip_filename = f"{event.slug}_seleccion.zip"
+
+    return HttpResponse(
+        buffer.getvalue(),
+        content_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'}
+    )

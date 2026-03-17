@@ -23,4 +23,14 @@ urlpatterns = [
         views.event_gallery_api,
         name="event_gallery_api"
     ),
+    path(
+        "evento/<slug:event_slug>/galeria/descargar/todas/",
+        views.download_all_photos,
+        name="download_all_photos"
+    ),
+    path(
+        "evento/<slug:event_slug>/galeria/descargar/seleccion/",
+        views.download_selected_photos,
+        name="download_selected_photos"
+    ),
 ]

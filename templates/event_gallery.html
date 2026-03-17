@@ -64,10 +64,22 @@
                         Un álbum vivo con los momentos que compartimos juntos.
                     </p>
 
-                    <div class="top-actions mt-4">
+                    <div class="top-actions top-actions-spaced mt-4">
                         <a href="{% url 'event_gallery' event.slug %}?slideshow=1" class="btn btn-brand-primary">
                             Abrir modo pantalla
                         </a>
+
+                        <a href="{% url 'download_all_photos' event.slug %}" class="btn btn-brand-outline-dark">
+                            Descargar todas
+                        </a>
+
+                        <button
+                            class="btn btn-brand-outline-dark"
+                            @click="downloadSelected"
+                            :disabled="selectedIds.length === 0"
+                        >
+                            Descargar seleccionadas ([[ selectedIds.length ]])
+                        </button>
                     </div>
                 </div>
             </div>
@@ -75,35 +87,78 @@
 
         <section class="gallery-album-section pb-5">
             <div class="container">
-                <div class="album-grid">
+                <div class="album-grid-elegant">
                     {% for media in media_items %}
-                        <div class="album-card">
-                            <div class="album-frame">
+                        <article class="album-editorial-card">
+                            <div class="album-editorial-top">
+                                <label class="album-check">
+                                    <input
+                                        type="checkbox"
+                                        :value="{{ media.id }}"
+                                        v-model="selectedIds"
+                                    >
+                                    <span></span>
+                                </label>
+
+                                <span class="badge table-badge-floating">
+                                    Mesa {{ media.table.number }}
+                                </span>
+                            </div>
+
+                            <div class="album-editorial-frame">
                                 <img
                                     src="{{ media.image.url }}"
                                     alt="Foto de la boda"
                                     @click="openPhoto(
+                                        {{ media.id }},
                                         '{{ media.image.url|escapejs }}',
                                         `{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}`,
                                         '{{ media.table.number }}',
                                         '{{ media.uploaded_at|date:"d/m/Y H:i" }}'
                                     )"
                                 >
-                            </div>
-                            <div class="album-caption">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge table-badge-custom">Mesa {{ media.table.number }}</span>
-                                    <small class="text-muted">{{ media.uploaded_at|date:"d/m/Y H:i" }}</small>
+
+                                <div class="album-editorial-overlay">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-overlay-light"
+                                        @click="openPhoto(
+                                            {{ media.id }},
+                                            '{{ media.image.url|escapejs }}',
+                                            `{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}`,
+                                            '{{ media.table.number }}',
+                                            '{{ media.uploaded_at|date:"d/m/Y H:i" }}'
+                                        )"
+                                    >
+                                        Ver
+                                    </button>
+
+                                    <a
+                                        href="{{ media.image.url }}"
+                                        download
+                                        class="btn btn-sm btn-overlay-dark"
+                                    >
+                                        Descargar
+                                    </a>
                                 </div>
-                                <div class="photo-guest-name">
-                                    {% if media.guest_name %}
-                                        <strong>{{ media.guest_name }}</strong>
-                                    {% else %}
-                                        <span class="text-muted">Invitado</span>
-                                    {% endif %}
+                            </div>
+
+                            <div class="album-editorial-caption">
+                                <div class="album-editorial-main">
+                                    <div class="album-editorial-name">
+                                        {% if media.guest_name %}
+                                            {{ media.guest_name }}
+                                        {% else %}
+                                            Invitado
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="album-editorial-date">
+                                        {{ media.uploaded_at|date:"d/m/Y H:i" }}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     {% empty %}
                         <div class="empty-state-card text-center">
                             <h4 class="mb-2">No hay fotos todavía</h4>
@@ -127,6 +182,24 @@
 
                     <div class="modal-body text-center pt-0">
                         <img :src="modalPhoto.image" class="img-fluid rounded modal-image" alt="Foto ampliada">
+
+                        <div class="mt-4 d-flex justify-content-center gap-3 flex-wrap">
+                            <a
+                                :href="modalPhoto.image"
+                                download
+                                class="btn btn-brand-primary"
+                            >
+                                Descargar foto
+                            </a>
+
+                            <button
+                                type="button"
+                                class="btn btn-brand-outline-dark"
+                                @click="toggleSelected(modalPhoto.id)"
+                            >
+                                [[ isSelected(modalPhoto.id) ? 'Quitar de selección' : 'Seleccionar foto' ]]
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -140,6 +213,7 @@
     const slideshowItems = [
         {% for media in media_items %}
         {
+            id: {{ media.id }},
             image: "{{ media.image.url|escapejs }}",
             guest_name: "{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}",
             table_number: "{{ media.table.number }}",
@@ -157,17 +231,20 @@
                 slideshowItems: slideshowItems,
                 currentIndex: 0,
                 currentSlide: slideshowItems.length ? slideshowItems[0] : {
+                    id: null,
                     image: "",
                     guest_name: "Invitado",
                     table_number: "",
                     uploaded_at: ""
                 },
                 modalPhoto: {
+                    id: null,
                     image: "",
                     guest_name: "",
                     table_number: "",
                     uploaded_at: ""
                 },
+                selectedIds: [],
                 modalInstance: null,
                 slideInterval: null,
                 refreshInterval: null,
@@ -198,8 +275,9 @@
             if (this.refreshInterval) clearInterval(this.refreshInterval);
         },
         methods: {
-            openPhoto(image, guestName, tableNumber, uploadedAt) {
+            openPhoto(id, image, guestName, tableNumber, uploadedAt) {
                 this.modalPhoto = {
+                    id: id,
                     image: image,
                     guest_name: guestName || "Invitado",
                     table_number: tableNumber,
@@ -207,11 +285,13 @@
                 };
                 if (this.modalInstance) this.modalInstance.show();
             },
+
             nextSlide() {
                 if (!this.slideshowItems.length) return;
                 this.currentIndex = (this.currentIndex + 1) % this.slideshowItems.length;
                 this.currentSlide = this.slideshowItems[this.currentIndex];
             },
+
             toggleFullscreen() {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen();
@@ -219,19 +299,23 @@
                     document.exitFullscreen();
                 }
             },
+
             fetchPhotos() {
                 fetch("/evento/{{ event.slug }}/galeria/api/")
                     .then(response => response.json())
                     .then(data => {
                         if (data.items) {
                             this.slideshowItems = data.items;
+
                             if (this.currentIndex >= this.slideshowItems.length) {
                                 this.currentIndex = 0;
                             }
+
                             if (this.slideshowItems.length > 0) {
                                 this.currentSlide = this.slideshowItems[this.currentIndex];
                             } else {
                                 this.currentSlide = {
+                                    id: null,
                                     image: "",
                                     guest_name: "Invitado",
                                     table_number: "",
@@ -243,6 +327,32 @@
                     .catch(error => {
                         console.error("Error al cargar fotos:", error);
                     });
+            },
+
+            toggleSelected(id) {
+                const index = this.selectedIds.indexOf(id);
+
+                if (index >= 0) {
+                    this.selectedIds.splice(index, 1);
+                } else {
+                    this.selectedIds.push(id);
+                }
+            },
+
+            isSelected(id) {
+                return this.selectedIds.includes(id);
+            },
+
+            downloadSelected() {
+                if (!this.selectedIds.length) return;
+
+                const params = new URLSearchParams();
+
+                this.selectedIds.forEach(id => {
+                    params.append("ids", id);
+                });
+
+                window.location.href = "{% url 'download_selected_photos' event.slug %}?" + params.toString();
             }
         }
     }).mount("#galleryApp");
