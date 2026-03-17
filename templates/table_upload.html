@@ -180,7 +180,6 @@
 
 <script src="{% static 'assets/js/css_js/vue.3.2.36.global.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
     const { createApp } = Vue;
 
@@ -208,13 +207,18 @@
 
         methods: {
             openGallery() {
+                this.$refs.galleryInput.value = "";
                 this.$refs.galleryInput.click();
             },
 
             handleGalleryFiles(event) {
                 const files = Array.from(event.target.files || []);
+
+                if (!files.length) {
+                    return;
+                }
+
                 this.addFiles(files);
-                event.target.value = "";
             },
 
             addFiles(files) {

@@ -51,7 +51,6 @@ def validate_uploaded_image(image):
 
     return True, None
 
-
 def table_upload(request, event_slug, table_number, token):
     table = get_object_or_404(
         Table,
@@ -83,25 +82,32 @@ def table_upload(request, event_slug, table_number, token):
                     validation_errors.append(error_message)
                     continue
 
-                media_item = Media.objects.create(
-                    event=table.event,
-                    table=table,
-                    guest_name=guest_name,
-                    image=image
-                )
-
-                uploaded_count += 1
-
                 try:
-                    image.seek(0)
-                    upload_file_to_drive(
-                        image,
-                        os.path.basename(media_item.image.name),
-                        table.number,
-                        guest_name
+                    media_item = Media.objects.create(
+                        event=table.event,
+                        table=table,
+                        guest_name=guest_name,
+                        image=image
                     )
-                except Exception:
-                    drive_error_count += 1
+
+                    uploaded_count += 1
+
+                    try:
+                        upload_file_to_drive(
+                            media_item.image.path,
+                            os.path.basename(media_item.image.name),
+                            table.number,
+                            guest_name
+                        )
+                    except Exception as e:
+                        print("Error subiendo a Google Drive:", e)
+                        drive_error_count += 1
+
+                except Exception as e:
+                    print("Error guardando imagen en Django:", e)
+                    validation_errors.append(
+                        f"No se pudo guardar el archivo '{image.name}'."
+                    )
 
             for error in validation_errors:
                 messages.error(request, error)
@@ -133,8 +139,7 @@ def table_upload(request, event_slug, table_number, token):
         messages.error(request, "No se pudo procesar el formulario.")
         return redirect(request.path)
 
-    else:
-        form = MediaUploadForm()
+    form = MediaUploadForm()
 
     context = {
         "table": table,
@@ -143,7 +148,6 @@ def table_upload(request, event_slug, table_number, token):
     }
 
     return render(request, "table_upload.html", context)
-
 
 def event_qr_pdf(request, event_slug):
     event = get_object_or_404(Event, slug=event_slug)
