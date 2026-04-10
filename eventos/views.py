@@ -156,63 +156,114 @@ def event_qr_pdf(request, event_slug):
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
+    cols = 2
+    rows = 2
+
+    card_width = width / cols
+    card_height = height / rows
+
+    padding = 1 * cm
+    qr_size = 6.5 * cm  
+
+    wine = (122/255, 45/255, 47/255)
+    gold = (185/255, 150/255, 70/255)
+
+    positions = [
+        (0, height/2),
+        (width/2, height/2),
+        (0, 0),
+        (width/2, 0),
+    ]
+
+    pos_index = 0
 
     for table in tables:
-        pdf.setFont("Helvetica-Bold", 22)
-        pdf.drawCentredString(width / 2, height - 3 * cm, event.name)
 
-        pdf.setFont("Helvetica-Bold", 28)
-        pdf.drawCentredString(width / 2, height - 4.5 * cm, f"Mesa {table.number}")
+        if pos_index == 0:
+            pdf.setFillColorRGB(1, 1, 1)
+            pdf.rect(0, 0, width, height, fill=1)
 
-        pdf.setFont("Helvetica", 13)
-        pdf.drawCentredString(
-            width / 2,
-            height - 5.5 * cm,
-            "Escanea este código para subir tus fotos de la boda"
+        x_offset, y_offset = positions[pos_index]
+        center_x = x_offset + card_width / 2
+
+        pdf.setStrokeColorRGB(0, 0, 0)
+        pdf.setLineWidth(1)
+        pdf.roundRect(
+            x_offset + padding,
+            y_offset + padding,
+            card_width - padding*2,
+            card_height - padding*2,
+            20,
+            fill=0
         )
 
-        if table.qr_image:
-            qr_path = table.qr_image.path
-            qr_reader = ImageReader(qr_path)
+        pdf.setFillColorRGB(*wine)
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawCentredString(center_x, y_offset + card_height - 2.5*cm, event.name)
 
-            qr_size = 9 * cm
-            x = (width - qr_size) / 2
-            y = height - 15 * cm
+        pdf.setStrokeColorRGB(*gold)
+        pdf.setLineWidth(1)
+        pdf.line(
+            center_x - 2.5*cm,
+            y_offset + card_height - 2.9*cm,
+            center_x + 2.5*cm,
+            y_offset + card_height - 2.9*cm
+        )
+
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.setFillColorRGB(*wine)
+        pdf.drawCentredString(center_x, y_offset + card_height - 4*cm, f"Mesa {table.number}")
+
+        if table.qr_image:
+            qr_reader = ImageReader(table.qr_image.path)
 
             pdf.drawImage(
                 qr_reader,
-                x,
-                y,
+                center_x - qr_size/2,
+                y_offset + card_height/2 - qr_size/2,
                 width=qr_size,
                 height=qr_size,
                 preserveAspectRatio=True,
                 mask='auto'
             )
 
-        pdf.setFont("Helvetica", 11)
-        pdf.drawCentredString(
-            width / 2,
-            4 * cm,
-            "Abre la cámara de tu celular y escanea el código QR"
+        pdf.setFont("Helvetica-Oblique", 8.5)
+        pdf.setFillColorRGB(*gold)
+
+        pdf.drawCentredString(center_x, y_offset + 2.5*cm,
+            "Escanea el código QR"
         )
 
-        pdf.setFont("Helvetica-Oblique", 10)
-        pdf.drawCentredString(
-            width / 2,
-            3.3 * cm,
-            "Podrás subir tus fotos directamente desde tu teléfono"
+        pdf.drawCentredString(center_x, y_offset + 2*cm,
+            "y sube tus fotos"
         )
 
+        pdf.setFont("Helvetica", 7.5)
+        pdf.setFillColorRGB(0.5, 0.5, 0.5)
+
+        pdf.drawCentredString(center_x, y_offset + 1.3*cm,
+            "Forma parte de nuestra historia ✨"
+        )
+
+        pos_index += 1
+
+        if pos_index == 4:
+            pdf.showPage()
+            pos_index = 0
+
+    if pos_index != 0:
         pdf.showPage()
 
     pdf.save()
     buffer.seek(0)
 
-    filename = f"{event.slug}_qrs_mesas.pdf"
-    return HttpResponse(buffer, content_type="application/pdf", headers={
-        "Content-Disposition": f'inline; filename="{filename}"'
-    })
-
+    return HttpResponse(
+        buffer,
+        content_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename=\"{event.slug}_qrs_mesas.pdf\"'
+        }
+    )
 
 def event_gallery(request, event_slug):
     event = get_object_or_404(Event, slug=event_slug)
