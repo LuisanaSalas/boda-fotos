@@ -33,4 +33,9 @@ urlpatterns = [
         views.download_selected_photos,
         name="download_selected_photos"
     ),
+    path(
+        "evento/<slug:event_slug>/subir/",
+        views.upload_general,
+        name="upload_general"
+    )
 ]

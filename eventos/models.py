@@ -35,10 +35,13 @@ def media_upload_path(instance, filename):
     new_filename = f"{guest}_{timestamp}{extension}"
 
     event_slug = instance.event.slug
-    table_number = instance.table.number
 
-    return f"{event_slug}/mesa_{table_number}/{new_filename}"
+    if instance.table:
+        folder = f"mesa_{instance.table.number}"
+    else:
+        folder = "general"
 
+    return f"{event_slug}/{folder}/{new_filename}"
 
 class Event(models.Model):
     name = models.CharField(max_length=200)
@@ -121,19 +124,28 @@ class Media(models.Model):
         on_delete=models.CASCADE,
         related_name="media_items"
     )
+
     table = models.ForeignKey(
         Table,
-        on_delete=models.CASCADE,
-        related_name="media_items"
+        on_delete=models.SET_NULL,
+        related_name="media_items",
+        null=True,
+        blank=True
     )
+
     guest_name = models.CharField(max_length=150, blank=True, null=True)
+
     image = models.ImageField(upload_to=media_upload_path)
+
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default=STATUS_PENDING
     )
+
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Foto {self.id} - Mesa {self.table.number} - {self.status}"
+        if self.table:
+            return f"Foto {self.id} - Mesa {self.table.number} - {self.status}"
+        return f"Foto {self.id} - General - {self.status}"

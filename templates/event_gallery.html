@@ -19,7 +19,7 @@
                 <div class="ms-auto d-flex gap-2 flex-wrap">
                     <a href="/" class="btn btn-sm btn-brand-outline-dark">Inicio</a>
                     {% if event.tables.first %}
-                    <a href="{{ event.tables.first.get_upload_url }}" class="btn btn-sm btn-brand-primary">Compartir fotos</a>
+                    <a href="{% url 'upload_general' event.slug %}" class="btn btn-sm btn-brand-primary">Compartir fotos</a>
                     {% endif %}
                 </div>
             </nav>
@@ -101,7 +101,11 @@
                                 </label>
 
                                 <span class="badge table-badge-floating">
-                                    Mesa {{ media.table.number }}
+                                    {% if media.table %}
+                                        Mesa {{ media.table.number }}
+                                    {% else %}
+                                        General
+                                    {% endif %}
                                 </span>
                             </div>
 
@@ -216,7 +220,7 @@
             id: {{ media.id }},
             image: "{{ media.image.url|escapejs }}",
             guest_name: "{% if media.guest_name %}{{ media.guest_name|escapejs }}{% else %}Invitado{% endif %}",
-            table_number: "{{ media.table.number }}",
+            table_number: "{% if media.table %}{{ media.table.number }}{% else %}General{% endif %}",
             uploaded_at: "{{ media.uploaded_at|date:'d/m/Y H:i' }}"
         }{% if not forloop.last %},{% endif %}
         {% endfor %}

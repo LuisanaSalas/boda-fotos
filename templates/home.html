@@ -32,7 +32,7 @@
                     {% endif %}
                     {% if event and event.tables.first %}
                     <li class="nav-item">
-                        <a class="nav-link nav-link-custom" href="{{ event.tables.first.get_upload_url }}">Compartir fotos</a>
+                        <a class="nav-link nav-link-custom" href="{% url 'upload_general' event.slug %}">Compartir fotos</a>
                     </li>
                     {% endif %}
                 </ul>

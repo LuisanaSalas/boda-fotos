@@ -149,6 +149,40 @@ def table_upload(request, event_slug, table_number, token):
 
     return render(request, "table_upload.html", context)
 
+def upload_general(request, event_slug):
+    event = get_object_or_404(Event, slug=event_slug, is_active=True)
+
+    if request.method == "POST":
+        form = MediaUploadForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            guest_name = form.cleaned_data.get("guest_name")
+            images = request.FILES.getlist("images")
+
+            for image in images:
+                is_valid, _ = validate_uploaded_image(image)
+                if not is_valid:
+                    continue
+
+                Media.objects.create(
+                    event=event,
+                    table=None, 
+                    guest_name=guest_name,
+                    image=image
+                )
+
+            messages.success(request, "Fotos subidas correctamente.")
+            return redirect(request.path)
+
+    else:
+        form = MediaUploadForm()
+
+    return render(request, "table_upload.html", {
+        "event": event,
+        "table": None,  
+        "form": form
+    })
+
 def event_qr_pdf(request, event_slug):
     event = get_object_or_404(Event, slug=event_slug)
     tables = event.tables.all().order_by("number")
@@ -298,7 +332,7 @@ def event_gallery_api(request, event_slug):
             "id": m.id,
             "image": m.image.url,
             "guest_name": m.guest_name or "Invitado",
-            "table_number": m.table.number,
+            "table_number": m.table.number if m.table else "General",
             "uploaded_at": m.uploaded_at.strftime("%d/%m/%Y %H:%M"),
         })
 
@@ -326,7 +360,7 @@ def download_all_photos(request, event_slug):
             guest_slug = slugify(guest_name) or "invitado"
 
             filename = (
-                f"mesa_{media.table.number}/"
+                f"{'mesa_' + str(media.table.number) if media.table else 'general'}/"
                 f"{guest_slug}_{media.uploaded_at.strftime('%Y%m%d_%H%M%S')}{extension}"
             )
 
@@ -371,8 +405,10 @@ def download_selected_photos(request, event_slug):
             guest_name = media.guest_name or "invitado"
             guest_slug = slugify(guest_name) or "invitado"
 
+            folder = f"mesa_{media.table.number}" if media.table else "general"
+
             filename = (
-                f"mesa_{media.table.number}/"
+                f"{folder}/"
                 f"{guest_slug}_{media.uploaded_at.strftime('%Y%m%d_%H%M%S')}{extension}"
             )
 
